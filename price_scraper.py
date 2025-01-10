@@ -1,8 +1,8 @@
 import requests
-import json
 import psycopg2
 from psycopg2.extras import execute_values
 from datetime import datetime
+from decouple import config
 
 "Database setup method. Creates necessary database tables if they don't already exist"
 def setup_database(db_params):
@@ -113,13 +113,13 @@ def run(db_params):
 
 if __name__ == "__main__":
 
-    # Database connection parameters:
+    # Database connection parameters via python-decouple:
     db_params = {
-        'dbname': '*****',
-        'user': '*****',
-        'password': '*****',
-        'host': '*****',
-        'port': '*****'
+        'dbname': config('DB_NAME'),
+        'user': config('DB_USER'),
+        'password': config('DB_PASSWORD'),
+        'host': config('DB_HOST'),
+        'port': config('DB_PORT', cast=int)
     }
-
+    
     run(db_params)
