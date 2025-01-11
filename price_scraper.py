@@ -4,35 +4,9 @@ from psycopg2.extras import execute_values
 from datetime import datetime
 from decouple import config
 
-"Database setup method. Creates necessary database tables if they don't already exist"
-def setup_database(db_params):
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS item_prices (
-        timestamp TIMESTAMP NOT NULL,
-        item_id INTEGER NOT NULL,
-        avg_high_price INTEGER,
-        high_price_volume INTEGER,
-        avg_low_price INTEGER,
-        low_price_volume INTEGER,
-        PRIMARY KEY (timestamp, item_id)
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_item_prices_timestamp 
-    ON item_prices(timestamp);
-    
-    CREATE INDEX IF NOT EXISTS idx_item_prices_item_id 
-    ON item_prices(item_id);
-    """
-
-    with psycopg2.connect(db_params) as conn:
-        with conn.cursor() as cur:
-            cur.execute(create_table_query)
-    
-"""
-Method for fetching Runelite/OSRS Wiki pricing data via API
-See: https://oldschool.runescape.wiki/w/RuneScape:Real-time_Prices
-"""
 def fetch_5m_data():
+    # Fetches Runelite/OSRS Wiki pricing data from public API
+    # https://oldschool.runescape.wiki/w/RuneScape:Real-time_Prices
     api_url = 'http://prices.runescape.wiki/api/v1/osrs/5m'
 
     headers = {
@@ -49,8 +23,8 @@ def fetch_5m_data():
         print(f"Error fetching data: {e}")
         return None
 
-"""Method to convert API response JSON data into database-friendly format"""
 def process_data(json_data):
+    # Process raw json data into tuples ready to be stored in database
     if not json_data:
         return []
     
@@ -69,10 +43,8 @@ def process_data(json_data):
     
     return processed_data
 
-"""
-Method to store processed data in PostgreSQL database
-"""
 def store_data(processed_data, db_params):
+    # Store processed data in PostgreSQL database
     if not processed_data:
         print("No data to store")
         return
@@ -98,9 +70,6 @@ def store_data(processed_data, db_params):
     except Exception as e:
         print(f"Error storing data: {e}")
 
-"""
-Main execution method
-"""
 def run(db_params):
     try:
         data = fetch_5m_data()
