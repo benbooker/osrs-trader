@@ -4,6 +4,19 @@ from psycopg2.extras import execute_values
 from datetime import datetime
 from decouple import config
 from apscheduler.schedulers.background import BackgroundScheduler
+import logging
+
+# Logging configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(message)s',
+    handlers=[
+            logging.FileHandler("ge_tracker_log.log"),
+            logging.StreamHandler()
+        ]
+)
+
+logger = logging.getLogger(__name__)
 
 def fetch_price_data(time_interval):
     # Fetches Runelite/OSRS Wiki pricing data from public API
@@ -19,10 +32,11 @@ def fetch_price_data(time_interval):
     try:
         response = requests.get(api_url, headers=headers)
         response.raise_for_status()
+        logger.info(f"Successfully fetched {time_interval} data.")
         return response.json()
 
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching {time_interval} data: {e}")
+        logger.error(f"Error fetching {time_interval} data: {e}")
         return None
 
 def process_data(json_data, time_interval):
@@ -43,13 +57,14 @@ def process_data(json_data, time_interval):
             item_data.get('lowPriceVolume'),
             time_interval
         ))
-    
+
+    logger.info(f"Processed {len(processed_data)} items from {time_interval} interval.")
     return processed_data
 
 def store_data(processed_data, db_params):
     # Store processed data in PostgreSQL database
     if not processed_data:
-        print("No data to store")
+        logger.warning("No processed data to store.")
         return
     
     insert_query = """
@@ -69,9 +84,10 @@ def store_data(processed_data, db_params):
         with psycopg2.connect(db_params) as conn:
             with conn.cursor() as cur:
                 execute_values(cur, insert_query, processed_data)
-        print(f"Successfully stored {len(processed_data)} price records")
+        logger.info(f"Successfully stored {len(processed_data)} price records")
     except Exception as e:
-        print(f"Error storing data: {e}")
+        logger.error(f"Error storing data: {e}")
+
 
 def task(db_params, time_interval):
     # Main task function to fetch, process, and store data for a given time interval
@@ -81,7 +97,7 @@ def task(db_params, time_interval):
             processed_data = process_data(data, time_interval)
             store_data(processed_data, db_params)
     except Exception as e:
-        print(f"Error in task for {time_interval}: {e}")
+        logger.error(f"Error in task for {time_interval}: {e}")
 
 def run_scheduler(db_params):
     # Task schedule manager for executing 5m and 1h data tasks at appropriate intervals
@@ -93,14 +109,13 @@ def run_scheduler(db_params):
 
     scheduler.start()
 
-    print("Scheduler started. Press Ctrl+C to exit.")
+    logger.info("OSRS GE price script started. Press Ctrl+C to exit.")
     try:
         while True:
             pass
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
-        print("Scheduler stopped.")
-
+        logger.info("Script stopped.")
 
 
 if __name__ == "__main__":
@@ -114,3 +129,5 @@ if __name__ == "__main__":
     }
     
     run_scheduler(db_params)
+
+
