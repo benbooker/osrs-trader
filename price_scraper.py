@@ -3,6 +3,7 @@ import psycopg2
 from psycopg2.extras import execute_values
 from datetime import datetime
 from decouple import config
+from apscheduler.schedulers.background import BackgroundScheduler
 
 def fetch_price_data(time_interval):
     # Fetches Runelite/OSRS Wiki pricing data from public API
@@ -72,18 +73,37 @@ def store_data(processed_data, db_params):
     except Exception as e:
         print(f"Error storing data: {e}")
 
-def run(db_params):
+def task(db_params, time_interval):
+    # Main task function to fetch, process, and store data for a given time interval
     try:
-        data = fetch_price_data() #TODO: ADD SCHEDULER FOR TIME INTERVALS
+        data = fetch_price_data(time_interval)
         if data:
-            processed_data = process_data(data)
+            processed_data = process_data(data, time_interval)
             store_data(processed_data, db_params)
     except Exception as e:
-        print(f"Error in collection run: {e}")
+        print(f"Error in task for {time_interval}: {e}")
+
+def run_scheduler(db_params):
+    # Task schedule manager for executing 5m and 1h data tasks at appropriate intervals
+
+    scheduler = BackgroundScheduler()
+
+    scheduler.add_job(task, 'interval', minutes=5, args=[db_params, '5m'], id='5m_task')
+    scheduler.add_job(task, 'interval', hours=1, args=[db_params, '1h'], id='1h_task')
+
+    scheduler.start()
+
+    print("Scheduler started. Press Ctrl+C to exit.")
+    try:
+        while True:
+            pass
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
+        print("Scheduler stopped.")
+
 
 
 if __name__ == "__main__":
-
     # Database connection parameters via python-decouple:
     db_params = {
         'dbname': config('DB_NAME'),
@@ -93,4 +113,4 @@ if __name__ == "__main__":
         'port': config('DB_PORT', cast=int)
     }
     
-    run(db_params)
+    run_scheduler(db_params)
