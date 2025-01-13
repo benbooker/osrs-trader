@@ -5,6 +5,7 @@ from datetime import datetime
 from decouple import config
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
+from time import sleep
 
 # Logging configuration
 logging.basicConfig(
@@ -84,7 +85,7 @@ def store_data(processed_data, db_params):
         with psycopg2.connect(db_params) as conn:
             with conn.cursor() as cur:
                 execute_values(cur, insert_query, processed_data)
-        logger.info(f"Successfully stored {len(processed_data)} price records")
+        logger.info(f"Successfully stored {len(processed_data)} price records.")
     except Exception as e:
         logger.error(f"Error storing data: {e}")
 
@@ -101,19 +102,27 @@ def task(db_params, time_interval):
 
 def run_scheduler(db_params):
     # Task schedule manager for executing 5m and 1h data tasks at appropriate intervals
+    def create_scheduler():
+        """Helper function to create and start a scheduler with tasks."""
+        new_scheduler = BackgroundScheduler()
+        new_scheduler.add_job(task, 'interval', minutes=5, args=[db_params, '5m'], id='5m_task')
+        new_scheduler.add_job(task, 'interval', hours=1, args=[db_params, '1h'], id='1h_task')
+        new_scheduler.start()
+        logger.info("Scheduler started successfully.")
+        return new_scheduler
 
-    scheduler = BackgroundScheduler()
+    scheduler = create_scheduler()
+    logger.info("Starting ge_tracker.py script. Press Ctrl+C to exit.")
 
-    scheduler.add_job(task, 'interval', minutes=5, args=[db_params, '5m'], id='5m_task')
-    scheduler.add_job(task, 'interval', hours=1, args=[db_params, '1h'], id='1h_task')
-
-    scheduler.start()
-
-    logger.info("OSRS GE price script started. Press Ctrl+C to exit.")
     try:
         while True:
-            pass
+            sleep(60)  # Check the scheduler status every 60 seconds
+            if not scheduler.running:
+                logger.error("Scheduler stopped running unexpectedly. Restarting...")
+                scheduler.shutdown(wait=False)  # Gracefully stop the current scheduler
+                scheduler = create_scheduler()  # Create and start a new scheduler
     except (KeyboardInterrupt, SystemExit):
+        logger.info("Shutting down the scheduler gracefully...")
         scheduler.shutdown()
         logger.info("Script stopped.")
 
