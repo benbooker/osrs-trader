@@ -11,7 +11,8 @@ def setup_database(db_params):
         high_price_volume INTEGER,
         avg_low_price INTEGER,
         low_price_volume INTEGER,
-        PRIMARY KEY (timestamp, item_id)
+        time_interval VARCHAR(10) NOT NULL,
+        PRIMARY KEY (timestamp, item_id, time_interval)
     );
 
     CREATE INDEX IF NOT EXISTS idx_item_prices_timestamp 
@@ -19,6 +20,9 @@ def setup_database(db_params):
 
     CREATE INDEX IF NOT EXISTS idx_item_prices_item_id 
     ON item_prices(item_id);
+
+    CREATE INDEX IF NOT EXISTS idx_item_prices_time_interval 
+    ON item_prices(time_interval);
     """
     try:
         with psycopg2.connect(**db_params) as conn:
