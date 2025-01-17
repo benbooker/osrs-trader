@@ -26,19 +26,23 @@ def fetch_price_data(time_interval):
     api_url = f'http://prices.runescape.wiki/api/v1/osrs/{time_interval}'
 
     headers = {
-        'User-Agent': 'osrs_trader',
+        'User-Agent': 'osrs_ge_price_tracker',
         'From': '@mulch333 on Discord'
     }
 
-    try:
-        response = requests.get(api_url, headers=headers)
-        response.raise_for_status()
-        logger.info(f"Successfully fetched {time_interval} data.")
-        return response.json()
+    for fetch_attempt in range (3):
+        try:
+            response = requests.get(api_url, headers=headers)
+            response.raise_for_status()
+            logger.info(f"Successfully fetched {time_interval} data.")
+            return response.json()
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching {time_interval} data: {e}")
-        return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching {time_interval} data: {e}")
+            if fetch_attempt < 2:
+                sleep(2 ** fetch_attempt)
+    # Return none if all fetch attempts fail
+    return None
 
 def process_data(json_data, time_interval):
     # Process raw json data into tuples ready to be stored in database
