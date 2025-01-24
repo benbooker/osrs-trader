@@ -1,10 +1,10 @@
-
 import subprocess
 import pywinctl as pwc
 from time import sleep
 from tqdm import tqdm
 import pyautogui as pag
 import random
+from decouple import config
 
 from constants import *
 
@@ -32,10 +32,9 @@ def natural_write(text):
 
 
 class RLInstance():
-    def __init__(self, username: str, password: str, membership: bool):
+    def __init__(self, username: str, password: str):
         self.username = username
         self.password = password
-        self.membership = membership
 
     def setup(self):
         # Close any RuneLite windows that might already be open
@@ -79,10 +78,9 @@ class RLInstance():
             
         
 if __name__ == "__main__":
-    username = "yo"
-    password = "yo"
-    membership = False
+    # Fetch credentials from .env file
+    username = config('ACC_USERNAME')
+    password = config('ACC_PASSWORD')
 
-    rl_instance = RLInstance(username, password, membership)
+    rl_instance = RLInstance(username, password)
     rl_instance.setup()
-
