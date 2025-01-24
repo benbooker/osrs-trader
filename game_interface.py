@@ -38,30 +38,40 @@ class RLInstance():
         self.membership = membership
 
     def setup(self):
-        # if RuneLite application is not running, launch it quietly
-        if len(pwc.getWindowsWithTitle("RuneLite")) == 0:
-            print("Opening Runelite...")
-            subprocess.Popen(
-                ["runelite"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            # wait for RuneLite GUI to load
-            for i in tqdm(range(100)):
-                sleep(RUNELITE_LAUNCH_TIME/100)
+        # Close any RuneLite windows that might already be open
+        runelite_instances = pwc.getWindowsWithTitle('RuneLite')
+        if runelite_instances:
+            print(f"Closing {len(runelite_instances)} existing RuneLite instances...")
+            for instance in runelite_instances:
+                instance.close()
+                sleep(1)
+                pag.press('enter')
+                sleep(1)
         else:
-            print("RuneLite is already running.")
+            print("No existing RuneLite instances found.")
+
+        # Open a single new RuneLite window
+        print("Opening RuneLite...")
+        subprocess.Popen(
+            ["runelite"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        # Wait for RuneLite GUI to load
+        for i in tqdm(range(100)):
+            sleep(RL_LAUNCH_TIME / 100)
         
-        # position and resize RuneLite window
+        # Position and resize RuneLite window
         runelite_instances = pwc.getWindowsWithTitle('RuneLite')
         instance = runelite_instances[0]
         instance.raiseWindow()
-        instance.resizeTo(750,500)
-        instance.moveTo(0,0)
+        instance.resizeTo(RL_WIDTH, RL_HEIGHT)
+        instance.moveTo(TOP_LEFT_PIXEL,TOP_LEFT_PIXEL)
         
         # Log into account
         print(f"Logging into account {self.username}")
-        EXISTING_USER.natural_click()
+        pag.press('enter')
         natural_write(self.username)
         pag.press('tab')
         natural_write(self.password)
@@ -75,3 +85,4 @@ if __name__ == "__main__":
 
     rl_instance = RLInstance(username, password, membership)
     rl_instance.setup()
+
