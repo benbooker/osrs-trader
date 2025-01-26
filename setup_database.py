@@ -40,7 +40,8 @@ def setup_database():
                     timescaledb.compress_orderby = 'timestamp DESC'
                 );
             """)
-            
+
+            conn.commit()
             logger.info("Database setup complete!")
 
     except Exception as e:

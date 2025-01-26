@@ -79,7 +79,7 @@ def store_data(processed_data, db_params):
     """
 
     try:
-        with psycopg2.connect(db_params) as conn:
+        with psycopg2.connect(**db_params) as conn:
             with conn.cursor() as cur:
                 execute_values(cur, insert_query, processed_data)
         logger.info(f"Stored {len(processed_data)} price records")
