@@ -1,38 +1,52 @@
+# setup_database.py
+import logging
 import psycopg2
 from decouple import config
 
-def setup_database(db_params):
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS item_prices (
-        timestamp TIMESTAMPTZ NOT NULL,
-        item_id INTEGER NOT NULL,
-        avg_high_price INTEGER,
-        high_price_volume INTEGER,
-        avg_low_price INTEGER,
-        low_price_volume INTEGER,
-        PRIMARY KEY (timestamp, item_id)
-    );
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-    CREATE INDEX IF NOT EXISTS idx_item_prices_timestamp 
-    ON item_prices(timestamp);
-
-    CREATE INDEX IF NOT EXISTS idx_item_prices_item_id 
-    ON item_prices(item_id);
-    """
+def setup_database():
+    """One-time setup for OSRS price database"""
     try:
-        with psycopg2.connect(**db_params) as conn:
-            with conn.cursor() as cur:
-                cur.execute(create_table_query)
-            print("Database setup completed successfully.")
+        # Connect using basic credentials
+        conn = psycopg2.connect(
+            dbname=config('DB_NAME'),
+            user=config('DB_USER'),
+            password=config('DB_PASSWORD'),
+            host=config('DB_HOST'),
+            port=config('DB_PORT', default=5432, cast=int)
+        )
+        
+        with conn.cursor() as cur:
+            # Create core table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS item_prices (
+                    timestamp TIMESTAMPTZ NOT NULL,
+                    item_id INTEGER NOT NULL,
+                    avg_high_price INTEGER,
+                    high_price_volume INTEGER,
+                    avg_low_price INTEGER,
+                    low_price_volume INTEGER,
+                    PRIMARY KEY (timestamp, item_id)
+                );
+            """)
+            
+            # Enable TimescaleDB features
+            cur.execute("SELECT create_hypertable('item_prices', 'timestamp')")
+            cur.execute("""
+                ALTER TABLE item_prices SET (
+                    timescaledb.compress,
+                    timescaledb.compress_orderby = 'timestamp DESC'
+                );
+            """)
+            
+            logger.info("Database setup complete!")
+
     except Exception as e:
-        print(f"Error during database setup: {e}")
+        logger.error(f"Setup failed: {e}")
+    finally:
+        if conn: conn.close()
 
 if __name__ == "__main__":
-    db_params = {
-        'dbname': config('DB_NAME'),
-        'user': config('DB_USER'),
-        'password': config('DB_PASSWORD'),
-        'host': config('DB_HOST'),
-        'port': config('DB_PORT', cast=int)
-    }
-    setup_database(db_params)
+    setup_database()
