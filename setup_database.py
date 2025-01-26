@@ -2,7 +2,6 @@ import psycopg2
 from decouple import config
 
 def setup_database(db_params):
-    # Database setup: Creates necessary database tables if they don't already exist.
     create_table_query = """
     CREATE TABLE IF NOT EXISTS item_prices (
         timestamp TIMESTAMPTZ NOT NULL,
@@ -11,8 +10,7 @@ def setup_database(db_params):
         high_price_volume INTEGER,
         avg_low_price INTEGER,
         low_price_volume INTEGER,
-        time_interval VARCHAR(10) NOT NULL,
-        PRIMARY KEY (timestamp, item_id, time_interval)
+        PRIMARY KEY (timestamp, item_id)
     );
 
     CREATE INDEX IF NOT EXISTS idx_item_prices_timestamp 
@@ -20,9 +18,6 @@ def setup_database(db_params):
 
     CREATE INDEX IF NOT EXISTS idx_item_prices_item_id 
     ON item_prices(item_id);
-
-    CREATE INDEX IF NOT EXISTS idx_item_prices_time_interval 
-    ON item_prices(time_interval);
     """
     try:
         with psycopg2.connect(**db_params) as conn:
@@ -33,7 +28,6 @@ def setup_database(db_params):
         print(f"Error during database setup: {e}")
 
 if __name__ == "__main__":
-    # Database connection parameters via python-decouple:
     db_params = {
         'dbname': config('DB_NAME'),
         'user': config('DB_USER'),
@@ -41,5 +35,4 @@ if __name__ == "__main__":
         'host': config('DB_HOST'),
         'port': config('DB_PORT', cast=int)
     }
-    
     setup_database(db_params)
